@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Barograph — plain weather, no ads</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0E1822; --slate:#16202B; --slate-2:#1E2B39; --line:#2B3A4A;
+  --mist:#8FA3B5; --paper:#E6EDF2;
+  --warm:#E8A33D; --cool:#5FB3C7; --alert:#D1614C; --good:#6FBF8B;
+  --r:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  background:var(--ink);color:var(--paper);font-family:"IBM Plex Sans",system-ui,sans-serif;
+  font-size:15px;line-height:1.5;padding:16px;max-width:960px;margin:0 auto;min-height:100vh;
+}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
+h1,.display{font-family:"Bricolage Grotesque","IBM Plex Sans",sans-serif;font-weight:700;letter-spacing:-.02em}
+
+.masthead{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.masthead h1{font-size:19px}
+.masthead .sub{font-size:11px;color:var(--mist);letter-spacing:.08em;text-transform:uppercase}
+
+.finder{position:relative;margin-bottom:12px}
+.finder-row{display:flex;gap:8px}
+input[type=search]{flex:1;min-width:0;background:var(--slate);border:1px solid var(--line);border-radius:var(--r);color:var(--paper);padding:11px 13px;font:inherit}
+input[type=search]::placeholder{color:var(--mist)}
+input:focus,button:focus-visible{outline:2px solid var(--warm);outline-offset:1px}
+button{background:var(--slate);border:1px solid var(--line);border-radius:var(--r);color:var(--paper);padding:11px 14px;font:inherit;cursor:pointer;white-space:nowrap}
+button:hover{border-color:var(--mist)}
+.results{position:absolute;top:calc(100% + 5px);left:0;right:0;z-index:20;background:var(--slate-2);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;box-shadow:0 12px 32px rgba(0,0,0,.5)}
+.results button{display:block;width:100%;text-align:left;border:0;border-radius:0;background:none;padding:11px 13px}
+.results button+button{border-top:1px solid var(--line)}
+.results small{color:var(--mist);display:block;font-size:12px}
+
+.saved{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px}
+.chip{background:var(--slate);border:1px solid var(--line);border-radius:100px;padding:5px 8px 5px 12px;font-size:13px;display:flex;align-items:center;gap:2px}
+.chip .go{background:none;border:0;padding:0;color:var(--paper);font:inherit}
+.chip .x{background:none;border:0;padding:0 4px;color:var(--mist);font-size:15px;line-height:1}
+.chip .x:hover{color:var(--alert)}
+
+.card{background:var(--slate);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:12px}
+.eyebrow{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--mist);margin-bottom:10px;display:flex;justify-content:space-between;gap:8px}
+
+.now{display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap}
+.now .temp{font-family:"Bricolage Grotesque",sans-serif;font-size:64px;line-height:.9;font-weight:700;letter-spacing:-.04em}
+.now .cond{font-size:16px;margin-top:6px}
+.now .place{color:var(--mist);font-size:13px}
+.vitals{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px 20px;flex:1;min-width:180px}
+.vital{display:flex;justify-content:space-between;gap:10px;border-bottom:1px dotted var(--line);padding:4px 0;font-size:13px}
+.vital span:first-child{color:var(--mist)}
+
+.verdict{font-family:"Bricolage Grotesque",sans-serif;font-size:19px;font-weight:700;margin-bottom:2px}
+.verdict small{display:block;font-family:"IBM Plex Sans",sans-serif;font-size:12.5px;font-weight:400;color:var(--mist)}
+.sources{font-size:11px;color:var(--mist)}
+svg.chart{display:block;width:100%;height:auto;margin-top:8px}
+.legend{display:flex;gap:14px;font-size:11.5px;color:var(--mist);margin-top:6px;flex-wrap:wrap}
+.swatch{display:inline-block;width:12px;height:8px;border-radius:2px;margin-right:5px;vertical-align:1px}
+
+.callout{background:var(--slate-2);border-left:3px solid var(--warm);border-radius:6px;padding:9px 11px;font-size:13px;margin-bottom:10px}
+.callout.risk{border-left-color:var(--alert)}
+.callout b{color:var(--paper)}
+
+.strip{display:flex;gap:7px;overflow-x:auto;padding-bottom:6px;scrollbar-width:thin}
+.hr{flex:0 0 auto;width:66px;text-align:center;background:var(--slate-2);border-radius:var(--r);padding:9px 4px}
+.hr .t{font-size:11px;color:var(--mist)}
+.hr .d{font-size:16px;font-weight:600;margin:3px 0}
+.hr .sub{font-size:10.5px;color:var(--mist);min-height:14px}
+.dots{font-size:10px;letter-spacing:2px;margin-top:2px}
+.dots .on{color:var(--cool)}
+.dots .off{color:var(--line)}
+
+.day{display:grid;grid-template-columns:52px 1fr auto;gap:12px;align-items:center;padding:9px 0;border-top:1px solid var(--line)}
+.day:first-of-type{border-top:0}
+.day .name{font-size:13px;color:var(--mist)}
+.day .desc{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.day .rng{font-variant-numeric:tabular-nums;font-size:14px;white-space:nowrap}
+.day .rng b{color:var(--warm)}
+.day .rng i{color:var(--cool);font-style:normal}
+
+.metar{background:var(--slate-2);border-radius:var(--r);padding:11px 12px;font-size:12.5px;word-break:break-word;line-height:1.65}
+.delta{display:inline-block;padding:2px 8px;border-radius:100px;font-size:12px;margin-top:9px}
+.delta.ok{background:rgba(95,179,199,.16);color:var(--cool)}
+.delta.off{background:rgba(209,97,76,.16);color:var(--alert)}
+
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--mist);font-weight:500;padding-bottom:7px}
+td{padding:7px 0;border-top:1px solid var(--line);font-variant-numeric:tabular-nums}
+td:last-child,th:last-child{text-align:right}
+
+.note{color:var(--mist);font-size:12.5px}
+.err{color:var(--alert);font-size:13px}
+footer{color:var(--mist);font-size:11.5px;line-height:1.7;padding:18px 2px 30px;border-top:1px solid var(--line);margin-top:20px}
+footer a{color:var(--mist)}
+.skeleton{color:var(--mist);font-size:13px;padding:6px 0}
+
+@media (max-width:520px){ body{padding:12px} .now .temp{font-size:52px} .vitals{grid-template-columns:1fr} }
+@media (prefers-reduced-motion:no-preference){ .card{animation:rise .4s ease both} @keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}} }
+</style>
+</head>
+<body>
+
+<div class="masthead"><h1>Barograph</h1><div class="sub" id="clock">—</div></div>
+
+<div class="finder">
+  <div class="finder-row">
+    <input type="search" id="q" placeholder="Search a place — Gujrat, Turaif, Lahore…" autocomplete="off">
+    <button id="locBtn" title="Use my location">Locate</button>
+  </div>
+  <div class="results" id="results" hidden></div>
+</div>
+
+<div class="saved" id="saved"></div>
+<div id="app"></div>
+
+<footer>
+  Forecasts blended from three independent national services — ECMWF (Europe), NOAA GFS (USA), DWD ICON (Germany) —
+  via <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo.com</a>, CC BY 4.0.
+  Live observations: NOAA Aviation Weather Center METAR. Personal, non-commercial use.
+  No ads, no tracking, no accounts, no API keys — saved places and the accuracy log stay on this device only.
+</footer>
+
+<script>
+/* ============================================================ STORAGE ============================================================ */
+const Store = (() => {
+  let ok = true;
+  try { localStorage.setItem('__t','1'); localStorage.removeItem('__t'); } catch (e) { ok = false; }
+  const mem = {};
+  return {
+    persistent: ok,
+    get(k, fb) { try { const v = ok ? localStorage.getItem(k) : mem[k]; return v == null ? fb : JSON.parse(v); } catch (e) { return fb; } },
+    set(k, v) { try { const s = JSON.stringify(v); if (ok) localStorage.setItem(k, s); else mem[k] = s; } catch (e) {} }
+  };
+})();
+
+/* ============================================================ WMO codes ============================================================ */
+const WMO = {0:'Clear sky',1:'Mainly clear',2:'Partly cloudy',3:'Overcast',45:'Fog',48:'Rime fog',
+  51:'Light drizzle',53:'Drizzle',55:'Heavy drizzle',56:'Freezing drizzle',57:'Freezing drizzle',
+  61:'Light rain',63:'Rain',65:'Heavy rain',66:'Freezing rain',67:'Freezing rain',
+  71:'Light snow',73:'Snow',75:'Heavy snow',77:'Snow grains',80:'Light showers',81:'Showers',82:'Violent showers',
+  85:'Snow showers',86:'Heavy snow showers',95:'Thunderstorm',96:'Thunderstorm, hail',99:'Thunderstorm, heavy hail'};
+const wmo = c => WMO[c] || '—';
+
+/* ============================================================ METAR stations ============================================================ */
+const STATIONS = [
+  ['OPLA','Lahore',31.521,74.404],['OPRN','Islamabad',33.549,72.826],['OPKC','Karachi',24.907,67.161],
+  ['OPPS','Peshawar',33.994,71.515],['OPST','Sialkot',32.536,74.364],['OPMT','Multan',30.203,71.419],
+  ['OPQT','Quetta',30.251,66.938],['OPFA','Faisalabad',31.365,72.995],['OPSK','Sukkur',27.722,68.792],
+  ['OPGD','Gwadar',25.233,62.329],['OPNH','Nawabshah',26.219,68.390],['OPBW','Bahawalpur',29.348,71.718],
+  ['OPDI','D.I. Khan',31.909,70.897],['OPSD','Skardu',35.335,75.536],['OPGT','Gilgit',35.919,74.334],
+  ['OPTU','Turbat',25.986,63.030],['OETR','Turaif',31.692,38.731],['OERR','Arar',30.907,41.138],
+  ['OEGN','Jouf / Sakaka',29.785,40.100],['OERK','Riyadh',24.958,46.699],['OEJN','Jeddah',21.680,39.157],
+  ['OEDF','Dammam',26.471,49.798],['OEMA','Madinah',24.554,39.705],['OETB','Tabuk',28.366,36.619],
+  ['OEHL','Hail',27.438,41.686],['OMDB','Dubai',25.253,55.364],['OTHH','Doha',25.273,51.608],
+  ['OKBK','Kuwait',29.227,47.969],['OOMS','Muscat',23.593,58.284],['OBBI','Bahrain',26.271,50.634],
+  ['OAKB','Kabul',34.566,69.212],['VIDP','Delhi',28.566,77.103],['VABB','Mumbai',19.089,72.868],
+  ['EGLL','London',51.478,-0.461],['KJFK','New York',40.640,-73.779],['OIII','Tehran',35.689,51.313]
+];
+function nearestStation(lat, lon) {
+  let best = null, bestKm = Infinity;
+  for (const s of STATIONS) {
+    const dLat = (s[2] - lat) * 111, dLon = (s[3] - lon) * 111 * Math.cos(lat * Math.PI / 180);
+    const km = Math.hypot(dLat, dLon);
+    if (km < bestKm) { bestKm = km; best = s; }
+  }
+  return bestKm <= 250 ? { icao: best[0], name: best[1], km: Math.round(bestKm) } : null;
+}
+
+/* ============================================================
+   API layer. Three independent centres, one keyless endpoint.
+   MODELS[i].id is the Open-Meteo model identifier; when several
+   models are requested, each hourly variable comes back suffixed
+   per model (e.g. temperature_2m_ecmwf_ifs025). Parsing is
+   defensive — a model missing a field is simply excluded from
+   that hour's blend rather than breaking the page.
+   ============================================================ */
+const MODELS = [
+  { id: 'ecmwf_ifs025', label: 'ECMWF' },
+  { id: 'gfs_seamless',  label: 'NOAA GFS' },
+  { id: 'icon_seamless', label: 'DWD ICON' }
+];
+
+const API = {
+  async geocode(name) {
+    const u = 'https://geocoding-api.open-meteo.com/v1/search?count=6&language=en&format=json&name=' + encodeURIComponent(name);
+    const r = await fetch(u);
+    if (!r.ok) throw new Error('Search failed');
+    const j = await r.json();
+    return (j.results || []).map(x => ({ name: x.name, lat: x.latitude, lon: x.longitude, region: [x.admin1, x.country].filter(Boolean).join(', ') }));
+  },
+
+  /* "Now" + week ahead + official precipitation probability + CAPE, from Open-Meteo's own blended best_match */
+  async baseline(lat, lon) {
+    const p = new URLSearchParams({
+      latitude: lat, longitude: lon, timezone: 'auto', forecast_days: 7,
+      current: 'temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,surface_pressure,is_day',
+      hourly: 'precipitation_probability,cape',
+      daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset'
+    });
+    const r = await fetch('https://api.open-meteo.com/v1/forecast?' + p);
+    if (!r.ok) throw new Error('Forecast unavailable');
+    return r.json();
+  },
+
+  /* Three-centre blend for temperature, rain and wind — the accuracy layer */
+  async multiModel(lat, lon) {
+    const p = new URLSearchParams({
+      latitude: lat, longitude: lon, timezone: 'auto', forecast_days: 3,
+      models: MODELS.map(m => m.id).join(','),
+      hourly: 'temperature_2m,precipitation,wind_speed_10m,wind_gusts_10m'
+    });
+    const r = await fetch('https://api.open-meteo.com/v1/forecast?' + p);
+    if (!r.ok) throw new Error('Model comparison unavailable');
+    return r.json();
+  },
+
+  async metar(icao) {
+    const u = 'https://aviationweather.gov/api/data/metar?format=json&hours=2&ids=' + icao;
+    const r = await fetch(u);
+    if (!r.ok) throw new Error('METAR unavailable');
+    const j = await r.json();
+    if (!Array.isArray(j) || !j.length) throw new Error('No report');
+    return j[0];
+  }
+};
+
+/* Pull one variable's per-model series out of a multi-model response */
+function multiSeries(hourly, varName) {
+  const time = hourly.time;
+  const perModel = MODELS.map(m => hourly[varName + '_' + m.id]).filter(Boolean);
+  const labels = MODELS.filter(m => hourly[varName + '_' + m.id]).map(m => m.label);
+  return { time, perModel, labels };
+}
+
+/* ============================================================ Helpers ============================================================ */
+const $ = s => document.querySelector(s);
+const el = (t, c, h) => { const n = document.createElement(t); if (c) n.className = c; if (h != null) n.innerHTML = h; return n; };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const r1 = n => Math.round(n * 10) / 10;
+const compass = d => ['N','NE','E','SE','S','SW','W','NW'][Math.round(d / 45) % 8];
+
+/* ============================================================ Saved places ============================================================ */
+function savedPlaces() { return Store.get('places', []); }
+function savePlace(p) {
+  const list = savedPlaces();
+  if (!list.some(x => x.name === p.name && Math.abs(x.lat - p.lat) < .05)) {
+    list.unshift({ name: p.name, lat: p.lat, lon: p.lon, region: p.region });
+    Store.set('places', list.slice(0, 8));
+  }
+  renderSaved();
+}
+function renderSaved() {
+  const box = $('#saved'); box.innerHTML = '';
+  savedPlaces().forEach((p, i) => {
+    const chip = el('div', 'chip');
+    const go = el('button', 'go', esc(p.name));
+    go.onclick = () => load(p);
+    const x = el('button', 'x', '×'); x.title = 'Remove ' + p.name;
+    x.onclick = () => { const l = savedPlaces(); l.splice(i, 1); Store.set('places', l); renderSaved(); };
+    chip.append(go, x); box.append(chip);
+  });
+}
+
+/* ============================================================
+   Accuracy log — day-ahead temperature only for now (rain/wind
+   verification needs an observed-truth source per hour, which
+   METAR gives at the current moment but not retroactively without
+   a small history buffer; extend later if this proves useful).
+   ============================================================ */
+function logForecast(place, time, temps) {
+  const key = 'log:' + place.name;
+  const log = Store.get(key, []);
+  const stamp = new Date(Date.now() + 24 * 3600e3).toISOString().slice(0, 13);
+  const idx = time.findIndex(t => t.slice(0, 13) === stamp);
+  if (idx < 0 || log.some(e => e.for === stamp)) return;
+  log.unshift({ for: stamp, said: temps[idx], actual: null });
+  Store.set(key, log.slice(0, 40));
+}
+function settleLog(place, time, temps) {
+  const key = 'log:' + place.name;
+  const log = Store.get(key, []);
+  let changed = false;
+  for (const e of log) {
+    if (e.actual != null) continue;
+    const i = time.findIndex(t => t.slice(0, 13) === e.for);
+    if (i >= 0 && new Date(time[i]) < new Date() && temps[i] != null) { e.actual = temps[i]; changed = true; }
+  }
+  if (changed) Store.set(key, log);
+  return log.filter(e => e.actual != null);
+}
+
+/* ============================================================
+   Generic three-centre band chart — reused for temp / wind
+   ============================================================ */
+function bandChart(time, perModel, opts) {
+  const W = 700, H = 170, PL = 34, PR = 8, PT = 12, PB = 22;
+  const n = Math.min(time.length, perModel[0] ? perModel[0].length : 0, 72);
+  const lo = [], hi = [], mid = [];
+  for (let i = 0; i < n; i++) {
+    const vals = perModel.map(s => s[i]).filter(v => v != null);
+    if (!vals.length) { lo.push(null); hi.push(null); mid.push(null); continue; }
+    vals.sort((a, b) => a - b);
+    lo.push(vals[0]); hi.push(vals[vals.length - 1]); mid.push(vals[Math.floor(vals.length / 2)]);
+  }
+  const all = [...lo, ...hi].filter(v => v != null);
+  if (!all.length) return null;
+  const min = Math.floor(Math.min(...all) - 1), max = Math.ceil(Math.max(...all) + 1);
+  const X = i => PL + (i / (n - 1)) * (W - PL - PR);
+  const Y = v => PT + (1 - (v - min) / (max - min || 1)) * (H - PT - PB);
+
+  let top = '', bot = '', line = '';
+  for (let i = 0; i < n; i++) if (hi[i] != null) top += `${top ? 'L' : 'M'}${X(i).toFixed(1)},${Y(hi[i]).toFixed(1)}`;
+  for (let i = n - 1; i >= 0; i--) if (lo[i] != null) bot += `L${X(i).toFixed(1)},${Y(lo[i]).toFixed(1)}`;
+  for (let i = 0; i < n; i++) if (mid[i] != null) line += `${line ? 'L' : 'M'}${X(i).toFixed(1)},${Y(mid[i]).toFixed(1)}`;
+
+  let grid = '';
+  for (let k = 0; k <= 3; k++) {
+    const v = min + (max - min) * k / 3, y = Y(v).toFixed(1);
+    grid += `<line x1="${PL}" y1="${y}" x2="${W-PR}" y2="${y}" stroke="#2B3A4A" stroke-width="1"/>
+             <text x="4" y="${(+y+4).toFixed(1)}" fill="#8FA3B5" font-size="11" font-family="IBM Plex Mono">${Math.round(v)}${opts.unit}</text>`;
+  }
+  let ticks = '';
+  for (let i = 0; i < n; i++) {
+    const h = new Date(time[i]).getHours();
+    if (h === 0 || h === 12) {
+      const lbl = h === 0 ? new Date(time[i]).toLocaleDateString(undefined,{weekday:'short'}) : '12:00';
+      ticks += `<line x1="${X(i).toFixed(1)}" y1="${PT}" x2="${X(i).toFixed(1)}" y2="${H-PB}" stroke="#2B3A4A" stroke-dasharray="2 4"/>
+                <text x="${(X(i)+3).toFixed(1)}" y="${H-7}" fill="#8FA3B5" font-size="10.5" font-family="IBM Plex Mono">${lbl}</text>`;
+    }
+  }
+  const j = Math.min(24, n - 1);
+  return { svg: `<svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="${esc(opts.aria)}">
+      ${grid}${ticks}
+      <path d="${top}${bot}Z" fill="${opts.fill}"/>
+      <path d="${line}" fill="none" stroke="${opts.stroke}" stroke-width="2" stroke-linejoin="round"/>
+    </svg>`, gap24: hi[j] - lo[j], lo24: lo[j], hi24: hi[j] };
+}
+
+/* ============================================================ Temperature outlook ============================================================ */
+function temperatureCard(mm) {
+  const s = multiSeries(mm.hourly, 'temperature_2m');
+  if (s.perModel.length < 2) return null;
+  const band = bandChart(s.time, s.perModel, { unit:'°', fill:'rgba(232,163,61,.20)', stroke:'#E8A33D', aria:'Temperature range across models' });
+  if (!band) return null;
+  const gap = band.gap24;
+  const v = gap < 2  ? ['Models agree', 'Tomorrow\u2019s temperature is a safe bet.']
+          : gap < 4  ? ['Mostly settled', 'A degree or two of wiggle room.']
+          : ['Models disagree', 'Treat it as a range, not a number.'];
+  const card = el('div', 'card');
+  card.innerHTML = `<div class="eyebrow"><span>Temperature — next 3 days</span><span class="sources">${s.labels.join(' · ')}</span></div>
+    <div class="verdict">${v[0]}<small>${v[1]} At +24h: ${r1(band.lo24)}°–${r1(band.hi24)}°</small></div>
+    ${band.svg}
+    <div class="legend"><span><i class="swatch" style="background:rgba(232,163,61,.35)"></i>Range across the three services</span><span><i class="swatch" style="background:#E8A33D"></i>Middle estimate</span></div>`;
+  return card;
+}
+
+/* ============================================================ Rain outlook — agreement between centres, not one number ============================================================ */
+function rainCard(mm, officialPP, officialTime) {
+  const s = multiSeries(mm.hourly, 'precipitation');
+  if (s.perModel.length < 2) return null;
+  const n = Math.min(s.time.length, 48);
+  const rows = [];
+  for (let i = 0; i < n; i++) {
+    const vals = s.perModel.map(arr => arr[i]).filter(v => v != null);
+    if (!vals.length) continue;
+    const agree = vals.filter(v => v >= 0.1).length;
+    rows.push({ t: s.time[i], agree, total: vals.length, min: Math.min(...vals), max: Math.max(...vals), mean: vals.reduce((a,b)=>a+b,0)/vals.length });
+  }
+  // find the most likely upcoming rain window
+  const window = rows.find(r => r.agree >= 2 && r.mean >= 0.2);
+  const card = el('div', 'card');
+  let html = `<div class="eyebrow"><span>Rain — next 48 hours</span><span class="sources">${s.labels.join(' · ')}</span></div>`;
+  if (window) {
+    const d = new Date(window.t);
+    html += `<div class="callout"><b>${window.agree}/${window.total} services agree</b> on rain around
+      ${d.toLocaleDateString(undefined,{weekday:'long'})} ${String(d.getHours()).padStart(2,'0')}:00 —
+      likely ${r1(window.min)}–${r1(window.max)} mm.</div>`;
+  } else {
+    html += `<div class="callout" style="border-left-color:var(--cool)">No two services currently agree on meaningful rain in the next 48 hours.</div>`;
+  }
+  html += '<div class="strip">';
+  const startIdx = rows.findIndex(r => new Date(r.t) >= new Date());
+  for (let k = Math.max(0, startIdx); k < Math.min(rows.length, Math.max(0,startIdx) + 24); k++) {
+    const r = rows[k], d = new Date(r.t);
+    const op = officialTime ? officialPP[officialTime.indexOf(r.t)] : null;
+    let dots = '';
+    for (let m = 0; m < r.total; m++) dots += `<span class="${m < r.agree ? 'on' : 'off'}">●</span>`;
+    html += `<div class="hr">
+        <div class="t">${String(d.getHours()).padStart(2,'0')}:00</div>
+        <div class="dots">${dots}</div>
+        <div class="sub">${r.mean >= 0.1 ? r1(r.mean)+'mm' : (op!=null && op>=15 ? op+'%' : '—')}</div>
+      </div>`;
+  }
+  html += '</div><div class="legend"><span>● dot lit = one service predicts rain that hour</span></div>';
+  card.innerHTML = html;
+  return card;
+}
+
+/* ============================================================ Wind outlook — sustained + gust range + storm-energy flag ============================================================ */
+function windCard(mm, cape, capeTime) {
+  const speed = multiSeries(mm.hourly, 'wind_speed_10m');
+  const gust  = multiSeries(mm.hourly, 'wind_gusts_10m');
+  if (speed.perModel.length < 2) return null;
+  const band = bandChart(speed.time, speed.perModel, { unit:'', fill:'rgba(95,179,199,.20)', stroke:'#5FB3C7', aria:'Sustained wind speed range across models' });
+  const card = el('div', 'card');
+  let html = `<div class="eyebrow"><span>Wind — next 3 days</span><span class="sources">${speed.labels.join(' · ')}</span></div>`;
+
+  // convective / gust risk flag from CAPE
+  if (cape && capeTime) {
+    const soon = capeTime.slice(0, 24).map((t,i)=>({t, v: cape[i]})).filter(x=>x.v!=null);
+    const peak = soon.reduce((a,b)=> (b.v>a.v?b:a), {v:0});
+    if (peak.v >= 1500) {
+      const d = new Date(peak.t);
+      html += `<div class="callout risk"><b>Storm-gust risk</b> — atmospheric energy peaks around ${String(d.getHours()).padStart(2,'0')}:00 today.
+        Sustained-wind numbers below may understate gusts if a cell forms.</div>`;
+    } else if (peak.v >= 700) {
+      html += `<div class="callout"><b>Some convective risk</b> today — gusts could run higher than the sustained figure during any showers.</div>`;
+    }
+  }
+
+  if (band) {
+    const gap = band.gap24;
+    const v = gap < 4 ? ['Models agree', 'Sustained speed is a reliable read.']
+            : gap < 8 ? ['Mostly settled', 'A few km/h of uncertainty.']
+            : ['Models disagree', 'Wind is the least certain variable right now.'];
+    html += `<div class="verdict">${v[0]}<small>${v[1]} At +24h: ${r1(band.lo24)}–${r1(band.hi24)} km/h sustained</small></div>${band.svg}
+      <div class="legend"><span><i class="swatch" style="background:rgba(95,179,199,.35)"></i>Sustained range</span><span><i class="swatch" style="background:#5FB3C7"></i>Middle estimate</span></div>`;
+  }
+
+  if (gust.perModel.length) {
+    const n = Math.min(gust.time.length, 24);
+    html += '<div class="strip" style="margin-top:10px">';
+    const startIdx = gust.time.findIndex(t => new Date(t) >= new Date());
+    for (let i = Math.max(0,startIdx); i < Math.min(gust.time.length, Math.max(0,startIdx)+24); i++) {
+      const vals = gust.perModel.map(a=>a[i]).filter(v=>v!=null);
+      if (!vals.length) continue;
+      const top = Math.round(Math.max(...vals));
+      const d = new Date(gust.time[i]);
+      html += `<div class="hr"><div class="t">${String(d.getHours()).padStart(2,'0')}:00</div><div class="d">${top}</div><div class="sub">gust km/h</div></div>`;
+    }
+    html += '</div>';
+  }
+  card.innerHTML = html;
+  return card;
+}
+
+/* ============================================================ Render ============================================================ */
+function render(place, base, mm) {
+  const app = $('#app'); app.innerHTML = '';
+  const c = base.current, u = base.current_units;
+
+  const now = el('div', 'card');
+  now.innerHTML = `<div class="eyebrow"><span>Now — ${esc(place.name)}</span></div>
+    <div class="now">
+      <div><div class="temp">${Math.round(c.temperature_2m)}°</div><div class="cond">${wmo(c.weather_code)}</div><div class="place">${esc(place.region||'')}</div></div>
+      <div class="vitals">
+        <div class="vital"><span>Feels like</span><b>${Math.round(c.apparent_temperature)}°</b></div>
+        <div class="vital"><span>Humidity</span><b>${c.relative_humidity_2m}%</b></div>
+        <div class="vital"><span>Wind</span><b>${Math.round(c.wind_speed_10m)} ${u.wind_speed_10m} ${compass(c.wind_direction_10m)}</b></div>
+        <div class="vital"><span>Gusts</span><b>${Math.round(c.wind_gusts_10m)} ${u.wind_gusts_10m}</b></div>
+        <div class="vital"><span>Pressure</span><b>${Math.round(c.surface_pressure)} hPa</b></div>
+        <div class="vital"><span>Sunset</span><b>${base.daily.sunset[0].slice(11)}</b></div>
+      </div>
+    </div>`;
+  app.append(now);
+
+  const t = temperatureCard(mm); if (t) app.append(t);
+  const r = rainCard(mm, base.hourly.precipitation_probability, base.hourly.time); if (r) app.append(r);
+  const w = windCard(mm, base.hourly.cape, base.hourly.time); if (w) app.append(w);
+
+  const days = el('div', 'card');
+  let ds = '<div class="eyebrow"><span>Week ahead</span></div>';
+  base.daily.time.forEach((t2, i) => {
+    const d = new Date(t2);
+    const name = i === 0 ? 'Today' : d.toLocaleDateString(undefined, { weekday: 'short' });
+    const pp = base.daily.precipitation_probability_max[i];
+    ds += `<div class="day"><div class="name">${name}</div>
+      <div class="desc">${wmo(base.daily.weather_code[i])}${pp>=15?' · '+pp+'%':''}</div>
+      <div class="rng"><b>${Math.round(base.daily.temperature_2m_max[i])}°</b> <i>${Math.round(base.daily.temperature_2m_min[i])}°</i></div></div>`;
+  });
+  days.innerHTML = ds; app.append(days);
+
+  const st = nearestStation(place.lat, place.lon);
+  const obsSlot = el('div', 'card');
+  obsSlot.innerHTML = st
+    ? `<div class="eyebrow"><span>Measured — ${st.name} airport, ${st.km} km away</span></div><div class="skeleton">Fetching the actual reading…</div>`
+    : `<div class="eyebrow"><span>Measured</span></div><div class="note">No reporting airport within 250 km of here. This location is model-only.</div>`;
+  app.append(obsSlot);
+  if (st) loadMetar(st, obsSlot, c.temperature_2m);
+
+  logForecast(place, mm.hourly.time, mm.hourly['temperature_2m_' + MODELS[0].id] || []);
+  const settled = settleLog(place, mm.hourly.time, mm.hourly['temperature_2m_' + MODELS[0].id] || []);
+  const logCard = el('div', 'card');
+  if (!settled.length) {
+    logCard.innerHTML = `<div class="eyebrow"><span>Track record — ${esc(place.name)}</span></div>
+      <div class="note">Nothing to score yet. Every visit files the day-ahead temperature call, then checks it once
+      that hour has passed. Come back tomorrow. (Rain and wind verification can be added the same way once this proves useful.)</div>`;
+  } else {
+    const errs = settled.map(e => Math.abs(e.said - e.actual));
+    const avg = r1(errs.reduce((a,b)=>a+b,0)/errs.length);
+    let rows = '';
+    settled.slice(0,7).forEach(e => {
+      const d = e.said - e.actual;
+      rows += `<tr><td>${e.for.slice(5,10)} ${e.for.slice(11)}:00</td><td>${r1(e.said)}°</td><td>${r1(e.actual)}°</td>
+        <td style="color:${Math.abs(d)<1.5?'var(--cool)':'var(--warm)'}">${d>0?'+':''}${r1(d)}</td></tr>`;
+    });
+    logCard.innerHTML = `<div class="eyebrow"><span>Track record — ${esc(place.name)}</span></div>
+      <p class="note" style="margin-bottom:10px">Across ${settled.length} checked forecast${settled.length>1?'s':''}, day-ahead temperature has been off by
+      <b style="color:var(--paper)">${avg}°</b> on average.</p>
+      <table><thead><tr><th>Hour</th><th>Said</th><th>Was</th><th>Off by</th></tr></thead><tbody>${rows}</tbody></table>`;
+  }
+  app.append(logCard);
+
+  if (!Store.persistent) app.append(el('div','card','<div class="note">This preview can\'t save to your device, so saved places and the track record reset on reload. Deploy to GitHub Pages and both will persist.</div>'));
+}
+
+async function loadMetar(st, slot, modelTemp) {
+  try {
+    const m = await API.metar(st.icao);
+    const obsT = m.temp;
+    const age = Math.round((Date.now() - new Date(m.reportTime + 'Z')) / 60000);
+    let delta = '';
+    if (obsT != null && modelTemp != null) {
+      const d = r1(modelTemp - obsT);
+      delta = `<div class="delta ${Math.abs(d)<2?'ok':'off'}">Model reads ${d>0?'+':''}${d}° vs the instrument</div>`;
+    }
+    slot.innerHTML = `<div class="eyebrow"><span>Measured — ${st.name} airport, ${st.km} km away</span></div>
+      <div class="metar"><b class="mono" style="font-size:22px">${obsT!=null?r1(obsT)+'°':'—'}</b>
+      &nbsp;observed ${isFinite(age)?age+' min ago':''}<br>
+      <span class="mono" style="color:var(--mist)">${esc(m.rawOb||'')}</span></div>${delta}
+      <p class="note" style="margin-top:9px">Physical instrument reading, not a model output.</p>`;
+  } catch (e) {
+    slot.innerHTML = `<div class="eyebrow"><span>Measured — ${st.name} airport</span></div>
+      <div class="note">The airport observation feed didn't respond from the browser. Everything else on this page is unaffected.</div>`;
+  }
+}
+
+/* ============================================================ Load + wiring ============================================================ */
+async function load(place) {
+  Store.set('last', place);
+  $('#app').innerHTML = '<div class="card"><div class="skeleton">Loading ' + esc(place.name) + '…</div></div>';
+  try {
+    const [base, mm] = await Promise.all([API.baseline(place.lat, place.lon), API.multiModel(place.lat, place.lon)]);
+    render(place, base, mm);
+    savePlace(place);
+  } catch (e) {
+    $('#app').innerHTML = '<div class="card"><p class="err">Couldn\'t reach the weather service. Check your connection and try again.</p></div>';
+  }
+}
+
+let tId;
+$('#q').addEventListener('input', e => {
+  clearTimeout(tId);
+  const v = e.target.value.trim();
+  if (v.length < 2) { $('#results').hidden = true; return; }
+  tId = setTimeout(async () => {
+    try {
+      const list = await API.geocode(v);
+      const box = $('#results'); box.innerHTML = '';
+      if (!list.length) box.innerHTML = '<button disabled>No place by that name. Try another spelling.</button>';
+      list.forEach(p => {
+        const b = el('button', '', `${esc(p.name)}<small>${esc(p.region)}</small>`);
+        b.onclick = () => { $('#q').value=''; box.hidden=true; load(p); };
+        box.append(b);
+      });
+      box.hidden = false;
+    } catch (err) { $('#results').hidden = true; }
+  }, 320);
+});
+document.addEventListener('click', e => { if (!e.target.closest('.finder')) $('#results').hidden = true; });
+
+$('#locBtn').onclick = () => {
+  if (!navigator.geolocation) return;
+  $('#locBtn').textContent = '…';
+  navigator.geolocation.getCurrentPosition(
+    pos => { $('#locBtn').textContent='Locate'; load({name:'My location',region:'',lat:r1(pos.coords.latitude),lon:r1(pos.coords.longitude)}); },
+    () => { $('#locBtn').textContent = 'Locate'; }
+  );
+};
+
+function tick(){ $('#clock').textContent = new Date().toLocaleString(undefined,{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}); }
+tick(); setInterval(tick, 30000);
+
+renderSaved();
+load(Store.get('last', { name:'Gujrat', region:'Punjab, Pakistan', lat:32.574, lon:74.079 }));
+</script>
+</body>
+</html>
