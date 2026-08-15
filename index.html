@@ -4,125 +4,213 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Barograph — plain weather, no ads</title>
+<meta name="description" content="Honest weather: three national forecast services blended, shown with their disagreement, checked against real airport instruments. No ads, no tracking, no accounts.">
+<meta name="theme-color" content="#0B121A">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230B121A'/%3E%3Cpath d='M5 21c4-1 5-9 9-9s4 6 8 6 4-4 5-5' stroke='%23F0A94C' stroke-width='2.6' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
-  --ink:#0E1822; --slate:#16202B; --slate-2:#1E2B39; --line:#2B3A4A;
-  --mist:#8FA3B5; --paper:#E6EDF2;
-  --warm:#E8A33D; --cool:#5FB3C7; --alert:#D1614C; --good:#6FBF8B;
-  --r:10px;
+  --bg:#0B121A; --surface:#141E29; --surface-2:#1B2937; --surface-3:#22323F;
+  --line:#26374A; --line-soft:#1E2E3E;
+  --text:#EAF1F7; --dim:#95AABD;
+  --warm:#F0A94C; --cool:#5FC2D8; --alert:#E2705A; --good:#6FBF8B;
+  --r:12px; --r-lg:16px;
+  --shadow:0 10px 28px -14px rgba(0,0,0,.75);
 }
 *{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
 body{
-  background:var(--ink);color:var(--paper);font-family:"IBM Plex Sans",system-ui,sans-serif;
-  font-size:15px;line-height:1.5;padding:16px;max-width:960px;margin:0 auto;min-height:100vh;
+  background:
+    radial-gradient(1100px 520px at 78% -12%, rgba(95,194,216,.09), transparent 60%),
+    radial-gradient(900px 460px at 8% -6%, rgba(240,169,76,.07), transparent 62%),
+    var(--bg);
+  background-attachment:fixed;
+  color:var(--text);font-family:"IBM Plex Sans",system-ui,-apple-system,sans-serif;
+  font-size:16.5px;line-height:1.55;padding:22px 20px 0;max-width:1120px;margin:0 auto;min-height:100vh;
+  -webkit-font-smoothing:antialiased;
 }
 .mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
 h1,.display{font-family:"Bricolage Grotesque","IBM Plex Sans",sans-serif;font-weight:700;letter-spacing:-.02em}
 
-.masthead{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
-.masthead h1{font-size:19px}
-.masthead .sub{font-size:11px;color:var(--mist);letter-spacing:.08em;text-transform:uppercase}
+/* ---------- masthead ---------- */
+.masthead{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:20px}
+.brand{display:flex;align-items:center;gap:11px;min-width:0}
+.brand .mark{width:34px;height:34px;border-radius:9px;background:linear-gradient(150deg,var(--surface-3),var(--surface));border:1px solid var(--line);display:grid;place-items:center;flex:0 0 auto}
+.masthead h1{font-size:25px;line-height:1.1}
+.masthead .sub{font-size:13px;color:var(--dim);letter-spacing:.07em;text-transform:uppercase;font-variant-numeric:tabular-nums}
+.mast-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 
-.finder{position:relative;margin-bottom:12px}
-.finder-row{display:flex;gap:8px}
-input[type=search]{flex:1;min-width:0;background:var(--slate);border:1px solid var(--line);border-radius:var(--r);color:var(--paper);padding:11px 13px;font:inherit}
-input[type=search]::placeholder{color:var(--mist)}
-input:focus,button:focus-visible{outline:2px solid var(--warm);outline-offset:1px}
-button{background:var(--slate);border:1px solid var(--line);border-radius:var(--r);color:var(--paper);padding:11px 14px;font:inherit;cursor:pointer;white-space:nowrap}
-button:hover{border-color:var(--mist)}
-.results{position:absolute;top:calc(100% + 5px);left:0;right:0;z-index:20;background:var(--slate-2);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;box-shadow:0 12px 32px rgba(0,0,0,.5)}
-.results button{display:block;width:100%;text-align:left;border:0;border-radius:0;background:none;padding:11px 13px}
-.results button+button{border-top:1px solid var(--line)}
-.results small{color:var(--mist);display:block;font-size:12px}
+.toggle{display:flex;background:var(--surface);border:1px solid var(--line);border-radius:99px;padding:3px;gap:2px}
+.toggle button{background:none;border:0;border-radius:99px;color:var(--dim);padding:6px 13px;font:inherit;font-size:14px;font-weight:500;cursor:pointer;line-height:1.2}
+.toggle button[aria-pressed=true]{background:var(--surface-3);color:var(--text)}
+.toggle button:hover{color:var(--text)}
 
-.saved{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px}
-.chip{background:var(--slate);border:1px solid var(--line);border-radius:100px;padding:5px 8px 5px 12px;font-size:13px;display:flex;align-items:center;gap:2px}
-.chip .go{background:none;border:0;padding:0;color:var(--paper);font:inherit}
-.chip .x{background:none;border:0;padding:0 4px;color:var(--mist);font-size:15px;line-height:1}
+/* ---------- finder ---------- */
+.finder{position:relative;margin-bottom:14px}
+.finder-row{display:flex;gap:10px}
+input[type=search]{flex:1;min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);color:var(--text);padding:13px 15px;font:inherit;font-size:16.5px}
+input[type=search]::placeholder{color:var(--dim)}
+input:focus-visible,button:focus-visible{outline:2px solid var(--warm);outline-offset:2px}
+button{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);color:var(--text);padding:13px 17px;font:inherit;font-size:16px;cursor:pointer;white-space:nowrap;transition:border-color .15s,background .15s}
+button:hover{border-color:var(--dim)}
+.results{position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:20;background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;box-shadow:0 18px 44px rgba(0,0,0,.6)}
+.results button{display:block;width:100%;text-align:left;border:0;border-radius:0;background:none;padding:13px 15px;font-size:16px}
+.results button+button{border-top:1px solid var(--line-soft)}
+.results button[aria-selected=true]{background:var(--surface-3)}
+.results small{color:var(--dim);display:block;font-size:13.5px;margin-top:2px}
+
+.saved{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
+.chip{background:var(--surface);border:1px solid var(--line);border-radius:99px;padding:6px 8px 6px 15px;font-size:15px;display:flex;align-items:center;gap:3px}
+.chip .go{background:none;border:0;padding:0;color:var(--text);font:inherit;font-size:15px}
+.chip .x{background:none;border:0;padding:0 6px;color:var(--dim);font-size:18px;line-height:1}
 .chip .x:hover{color:var(--alert)}
 
-.card{background:var(--slate);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:12px}
-.eyebrow{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--mist);margin-bottom:10px;display:flex;justify-content:space-between;gap:8px}
+/* ---------- grid + cards ---------- */
+/* min() keeps the track from forcing a floor wider than the screen itself */
+.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(min(430px,100%),1fr));align-items:start}
+.span-all{grid-column:1/-1}
+.card{
+  background:linear-gradient(180deg,var(--surface),#111A24);
+  border:1px solid var(--line-soft);border-radius:var(--r-lg);padding:20px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.035),var(--shadow);
+  min-width:0;
+}
+.eyebrow{font-size:12px;letter-spacing:.13em;text-transform:uppercase;color:var(--dim);margin-bottom:14px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-weight:500}
 
-.now{display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap}
-.now .temp{font-family:"Bricolage Grotesque",sans-serif;font-size:64px;line-height:.9;font-weight:700;letter-spacing:-.04em}
-.now .cond{font-size:16px;margin-top:6px}
-.now .place{color:var(--mist);font-size:13px}
-.vitals{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px 20px;flex:1;min-width:180px}
-.vital{display:flex;justify-content:space-between;gap:10px;border-bottom:1px dotted var(--line);padding:4px 0;font-size:13px}
-.vital span:first-child{color:var(--mist)}
+/* ---------- now ---------- */
+.now{display:flex;gap:26px;align-items:flex-start;flex-wrap:wrap}
+.now .lead{min-width:170px}
+.now .temp{font-family:"Bricolage Grotesque",sans-serif;font-size:78px;line-height:.88;font-weight:700;letter-spacing:-.045em;display:flex;align-items:flex-start;gap:10px}
+.now .temp .u{font-size:26px;line-height:1;margin-top:8px;color:var(--dim);letter-spacing:0}
+.now .cond{font-size:19px;margin-top:12px;display:flex;align-items:center;gap:9px}
+.now .place{color:var(--dim);font-size:15px;margin-top:3px}
+.now .feels{color:var(--dim);font-size:14.5px;margin-top:9px}
+.vitals{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 32px;flex:1;min-width:210px}
+.vital{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line-soft);padding:9px 0;font-size:15px}
+.vital span{color:var(--dim)}
+.vital b{font-variant-numeric:tabular-nums;font-weight:600}
 
-.verdict{font-family:"Bricolage Grotesque",sans-serif;font-size:19px;font-weight:700;margin-bottom:2px}
-.verdict small{display:block;font-family:"IBM Plex Sans",sans-serif;font-size:12.5px;font-weight:400;color:var(--mist)}
-.sources{font-size:11px;color:var(--mist)}
-svg.chart{display:block;width:100%;height:auto;margin-top:8px}
-.legend{display:flex;gap:14px;font-size:11.5px;color:var(--mist);margin-top:6px;flex-wrap:wrap}
-.swatch{display:inline-block;width:12px;height:8px;border-radius:2px;margin-right:5px;vertical-align:1px}
+.verdict{font-family:"Bricolage Grotesque",sans-serif;font-size:21px;font-weight:700;margin-bottom:4px;letter-spacing:-.015em}
+.verdict small{display:block;font-family:"IBM Plex Sans",sans-serif;font-size:14.5px;font-weight:400;color:var(--dim);letter-spacing:0;margin-top:3px;line-height:1.5}
+.sources{font-size:12px;color:var(--dim);letter-spacing:.06em}
+svg.chart{display:block;width:100%;height:auto;margin-top:12px}
+.chartbox{margin-top:2px;min-height:200px}
+.legend{display:flex;gap:18px;font-size:13px;color:var(--dim);margin-top:10px;flex-wrap:wrap}
+.swatch{display:inline-block;width:14px;height:9px;border-radius:2px;margin-right:7px;vertical-align:1px}
 
-.callout{background:var(--slate-2);border-left:3px solid var(--warm);border-radius:6px;padding:9px 11px;font-size:13px;margin-bottom:10px}
+.callout{background:var(--surface-2);border-left:3px solid var(--warm);border-radius:8px;padding:12px 14px;font-size:15px;margin-bottom:14px;line-height:1.5}
 .callout.risk{border-left-color:var(--alert)}
-.callout b{color:var(--paper)}
+.callout.calm{border-left-color:var(--cool)}
+.callout b{font-weight:600}
 
-.strip{display:flex;gap:7px;overflow-x:auto;padding-bottom:6px;scrollbar-width:thin}
-.hr{flex:0 0 auto;width:66px;text-align:center;background:var(--slate-2);border-radius:var(--r);padding:9px 4px}
-.hr .t{font-size:11px;color:var(--mist)}
-.hr .d{font-size:16px;font-weight:600;margin:3px 0}
-.hr .sub{font-size:10.5px;color:var(--mist);min-height:14px}
-.dots{font-size:10px;letter-spacing:2px;margin-top:2px}
+/* ---------- hour strips ---------- */
+.strip{display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;scrollbar-width:thin;scroll-snap-type:x proximity}
+.strip::-webkit-scrollbar{height:7px}
+.strip::-webkit-scrollbar-thumb{background:var(--line);border-radius:99px}
+.hr{flex:0 0 auto;width:78px;text-align:center;background:var(--surface-2);border:1px solid var(--line-soft);border-radius:var(--r);padding:11px 5px;scroll-snap-align:start}
+.hr .t{font-size:13px;color:var(--dim);font-variant-numeric:tabular-nums}
+.hr .d{font-size:19px;font-weight:600;margin:4px 0;font-variant-numeric:tabular-nums}
+.hr .sub{font-size:12.5px;color:var(--dim);min-height:17px}
+.dots{font-size:12px;letter-spacing:2px;margin:5px 0 2px}
 .dots .on{color:var(--cool)}
 .dots .off{color:var(--line)}
 
-.day{display:grid;grid-template-columns:52px 1fr auto;gap:12px;align-items:center;padding:9px 0;border-top:1px solid var(--line)}
+/* ---------- daily ---------- */
+.day{display:grid;grid-template-columns:66px 28px minmax(0,1fr) 104px 112px;gap:14px;align-items:center;padding:11px 0;border-top:1px solid var(--line-soft)}
 .day:first-of-type{border-top:0}
-.day .name{font-size:13px;color:var(--mist)}
-.day .desc{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.day .rng{font-variant-numeric:tabular-nums;font-size:14px;white-space:nowrap}
-.day .rng b{color:var(--warm)}
-.day .rng i{color:var(--cool);font-style:normal}
+.day.today .name{color:var(--warm);font-weight:600}
+.day .name{font-size:15px;color:var(--dim)}
+.day .ic{display:grid;place-items:center}
+.day .desc{font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)}
+.day .desc i{color:var(--cool);font-style:normal;font-size:13.5px}
+.bar{position:relative;height:7px;border-radius:99px;background:var(--line-soft)}
+.bar .fill{position:absolute;top:0;bottom:0;border-radius:99px;background:linear-gradient(90deg,var(--cool),var(--warm));min-width:8px}
+.day .rng{font-variant-numeric:tabular-nums;font-size:17px;white-space:nowrap;text-align:right}
+.day .rng b{color:var(--warm);font-weight:600}
+.day .rng i{color:var(--cool);font-style:normal;margin-left:7px}
 
-.metar{background:var(--slate-2);border-radius:var(--r);padding:11px 12px;font-size:12.5px;word-break:break-word;line-height:1.65}
-.delta{display:inline-block;padding:2px 8px;border-radius:100px;font-size:12px;margin-top:9px}
-.delta.ok{background:rgba(95,179,199,.16);color:var(--cool)}
-.delta.off{background:rgba(209,97,76,.16);color:var(--alert)}
+/* ---------- metar ---------- */
+.metar{background:var(--surface-2);border:1px solid var(--line-soft);border-radius:var(--r);padding:14px;font-size:14.5px;word-break:break-word;line-height:1.7}
+.obs-t{font-size:28px;font-weight:600;font-variant-numeric:tabular-nums}
+.delta{display:inline-block;padding:4px 12px;border-radius:99px;font-size:14px;margin-top:12px;font-weight:500}
+.delta.ok{background:rgba(95,194,216,.15);color:var(--cool)}
+.delta.off{background:rgba(226,112,90,.15);color:var(--alert)}
 
-table{width:100%;border-collapse:collapse;font-size:13px}
-th{text-align:left;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--mist);font-weight:500;padding-bottom:7px}
-td{padding:7px 0;border-top:1px solid var(--line);font-variant-numeric:tabular-nums}
+table{width:100%;border-collapse:collapse;font-size:15px}
+th{text-align:left;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);font-weight:500;padding-bottom:9px}
+td{padding:9px 0;border-top:1px solid var(--line-soft);font-variant-numeric:tabular-nums}
 td:last-child,th:last-child{text-align:right}
 
-.note{color:var(--mist);font-size:12.5px}
-.err{color:var(--alert);font-size:13px}
-footer{color:var(--mist);font-size:11.5px;line-height:1.7;padding:18px 2px 30px;border-top:1px solid var(--line);margin-top:20px}
-footer a{color:var(--mist)}
-.skeleton{color:var(--mist);font-size:13px;padding:6px 0}
+.note{color:var(--dim);font-size:14.5px;line-height:1.6}
+.err{color:var(--alert);font-size:15.5px;margin-bottom:14px}
+footer{color:var(--dim);font-size:13.5px;line-height:1.75;padding:26px 2px 36px;border-top:1px solid var(--line-soft);margin-top:26px}
+footer a{color:var(--dim)}
 
-@media (max-width:520px){ body{padding:12px} .now .temp{font-size:52px} .vitals{grid-template-columns:1fr} }
-@media (prefers-reduced-motion:no-preference){ .card{animation:rise .4s ease both} @keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}} }
+/* ---------- skeleton ---------- */
+.sk{background:var(--surface-2);border-radius:7px;position:relative;overflow:hidden}
+.sk::after{content:"";position:absolute;inset:0;transform:translateX(-100%);
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.055),transparent);animation:sweep 1.4s infinite}
+@keyframes sweep{100%{transform:translateX(100%)}}
+@media (prefers-reduced-motion:reduce){.sk::after{animation:none}}
+
+@media (max-width:560px){
+  body{padding:16px 14px 0;font-size:16px}
+  .card{padding:16px}
+  .now{gap:18px}
+  .now .temp{font-size:62px}
+  .now .temp .u{font-size:21px}
+  .vitals{grid-template-columns:1fr}
+  .day{grid-template-columns:58px 26px 96px 102px;gap:10px}
+  .day .desc{display:none}
+  .masthead h1{font-size:22px}
+}
+@media (prefers-reduced-motion:no-preference){
+  .card{animation:rise .38s ease both}
+  @keyframes rise{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
+}
 </style>
 </head>
 <body>
 
-<div class="masthead"><h1>Barograph</h1><div class="sub" id="clock">—</div></div>
+<div class="masthead">
+  <div class="brand">
+    <div class="mark" aria-hidden="true">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M3 16c3-.8 3.8-7 7-7s3 4.8 6 4.8S19.5 10 21 8.6" stroke="#F0A94C" stroke-width="2.1" stroke-linecap="round"/></svg>
+    </div>
+    <div>
+      <h1>Barograph</h1>
+      <div class="sub" id="clock">—</div>
+    </div>
+  </div>
+  <div class="mast-right">
+    <div class="toggle" role="group" aria-label="Temperature unit">
+      <button id="uC" aria-pressed="true">°C</button><button id="uF" aria-pressed="false">°F</button>
+    </div>
+    <div class="toggle" role="group" aria-label="Wind speed unit">
+      <button id="wK" aria-pressed="true">km/h</button><button id="wM" aria-pressed="false">mph</button>
+    </div>
+  </div>
+</div>
 
 <div class="finder">
   <div class="finder-row">
-    <input type="search" id="q" placeholder="Search a place — Gujrat, Turaif, Lahore…" autocomplete="off">
+    <input type="search" id="q" placeholder="Search a place — Gujrat, Turaif, Lahore…" autocomplete="off"
+           role="combobox" aria-expanded="false" aria-controls="results" aria-autocomplete="list">
     <button id="locBtn" title="Use my location">Locate</button>
   </div>
-  <div class="results" id="results" hidden></div>
+  <div class="results" id="results" role="listbox" hidden></div>
 </div>
 
 <div class="saved" id="saved"></div>
-<div id="app"></div>
+<div id="app" class="grid" aria-live="polite"></div>
 
 <footer>
   Forecasts blended from three independent national services — ECMWF (Europe), NOAA GFS (USA), DWD ICON (Germany) —
   via <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo.com</a>, CC BY 4.0.
   Live observations: NOAA Aviation Weather Center METAR. Personal, non-commercial use.
-  No ads, no tracking, no accounts, no API keys — saved places and the accuracy log stay on this device only.
+  No ads, no tracking, no accounts, no API keys — saved places, units and the accuracy log stay on this device only.
 </footer>
 
 <script>
@@ -138,6 +226,20 @@ const Store = (() => {
   };
 })();
 
+/* ============================================================
+   UNITS — everything is fetched and stored in metric; conversion
+   happens only at render time so toggling never refetches.
+   ============================================================ */
+const Units = {
+  temp: Store.get('u_temp', 'c'),
+  wind: Store.get('u_wind', 'kmh')
+};
+const cT  = v => v == null ? null : (Units.temp === 'f' ? v * 9/5 + 32 : v);   // absolute temperature
+const dT  = v => v == null ? null : (Units.temp === 'f' ? v * 9/5 : v);        // temperature *difference*
+const cW  = v => v == null ? null : (Units.wind === 'mph' ? v * 0.621371 : v);
+const tSym = () => Units.temp === 'f' ? '°F' : '°C';
+const wSym = () => Units.wind === 'mph' ? 'mph' : 'km/h';
+
 /* ============================================================ WMO codes ============================================================ */
 const WMO = {0:'Clear sky',1:'Mainly clear',2:'Partly cloudy',3:'Overcast',45:'Fog',48:'Rime fog',
   51:'Light drizzle',53:'Drizzle',55:'Heavy drizzle',56:'Freezing drizzle',57:'Freezing drizzle',
@@ -145,6 +247,24 @@ const WMO = {0:'Clear sky',1:'Mainly clear',2:'Partly cloudy',3:'Overcast',45:'F
   71:'Light snow',73:'Snow',75:'Heavy snow',77:'Snow grains',80:'Light showers',81:'Showers',82:'Violent showers',
   85:'Snow showers',86:'Heavy snow showers',95:'Thunderstorm',96:'Thunderstorm, hail',99:'Thunderstorm, heavy hail'};
 const wmo = c => WMO[c] || '—';
+
+/* Compact weather glyphs — keeps the daily list scannable at a glance */
+function icon(code, px) {
+  const size = px || 22;
+  const open = `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">`;
+  const cloud = (col, w) => `<path d="M7.4 18.2h9.1a3.5 3.5 0 0 0 .3-7 5.1 5.1 0 0 0-9.7-1.2 4.1 4.1 0 0 0 .3 8.2Z" fill="rgba(149,170,189,.13)" stroke="${col}" stroke-width="${w||1.7}"/>`;
+  const sun = (cx, cy, r) => `<circle cx="${cx}" cy="${cy}" r="${r}" fill="rgba(240,169,76,.22)" stroke="#F0A94C" stroke-width="1.7"/>`;
+  const rays = `<g stroke="#F0A94C" stroke-width="1.7"><path d="M12 2.4v2M12 19.6v2M2.4 12h2M19.6 12h2M5.2 5.2l1.4 1.4M17.4 17.4l1.4 1.4M18.8 5.2l-1.4 1.4M6.6 17.4l-1.4 1.4"/></g>`;
+  const c = code;
+  if (c === 0) return open + sun(12,12,4.3) + rays + `</svg>`;
+  if (c === 1 || c === 2) return open + sun(8.6,8.4,3.5) + cloud('#95AABD') + `</svg>`;
+  if (c === 3) return open + cloud('#95AABD') + `</svg>`;
+  if (c === 45 || c === 48) return open + cloud('#95AABD') + `<g stroke="#95AABD" stroke-width="1.7"><path d="M5 21h14M8 23.4h9"/></g></svg>`;
+  if (c >= 95) return open + cloud('#95AABD') + `<path d="M13 13.4 10 18h3l-1.2 3.8L15.6 17h-3.1Z" fill="rgba(240,169,76,.3)" stroke="#F0A94C" stroke-width="1.5"/></svg>`;
+  if ((c >= 71 && c <= 77) || c === 85 || c === 86) return open + cloud('#95AABD') + `<g stroke="#5FC2D8" stroke-width="1.7"><path d="M9 20.4v2.4M8 21.6h2M14.6 20.4v2.4M13.6 21.6h2"/></g></svg>`;
+  if (c >= 51) return open + cloud('#95AABD') + `<g stroke="#5FC2D8" stroke-width="1.8"><path d="M9 20.2 8.2 22.6M12.4 20.2l-.8 2.4M15.8 20.2l-.8 2.4"/></g></svg>`;
+  return open + cloud('#95AABD') + `</svg>`;
+}
 
 /* ============================================================ METAR stations ============================================================ */
 const STATIONS = [
@@ -198,7 +318,7 @@ const API = {
   async baseline(lat, lon) {
     const p = new URLSearchParams({
       latitude: lat, longitude: lon, timezone: 'auto', forecast_days: 16,
-      current: 'temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,surface_pressure,is_day',
+      current: 'temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,surface_pressure,uv_index,is_day',
       hourly: 'precipitation_probability,cape',
       daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset'
     });
@@ -243,6 +363,7 @@ const el = (t, c, h) => { const n = document.createElement(t); if (c) n.classNam
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const r1 = n => Math.round(n * 10) / 10;
 const compass = d => ['N','NE','E','SE','S','SW','W','NW'][Math.round(d / 45) % 8];
+const hhmm = d => String(d.getHours()).padStart(2, '0') + ':00';
 
 /* ============================================================ Saved places ============================================================ */
 function savedPlaces() { return Store.get('places', []); }
@@ -260,7 +381,7 @@ function renderSaved() {
     const chip = el('div', 'chip');
     const go = el('button', 'go', esc(p.name));
     go.onclick = () => load(p);
-    const x = el('button', 'x', '×'); x.title = 'Remove ' + p.name;
+    const x = el('button', 'x', '×'); x.title = 'Remove ' + p.name; x.setAttribute('aria-label', 'Remove ' + p.name);
     x.onclick = () => { const l = savedPlaces(); l.splice(i, 1); Store.set('places', l); renderSaved(); };
     chip.append(go, x); box.append(chip);
   });
@@ -271,6 +392,7 @@ function renderSaved() {
    verification needs an observed-truth source per hour, which
    METAR gives at the current moment but not retroactively without
    a small history buffer; extend later if this proves useful).
+   Values are always stored in Celsius.
    ============================================================ */
 function logForecast(place, time, temps) {
   const key = 'log:' + place.name;
@@ -295,11 +417,17 @@ function settleLog(place, time, temps) {
 }
 
 /* ============================================================
-   Generic three-centre band chart — reused for temp / wind
+   Charts. The SVG viewBox is 700 units wide but the card it sits
+   in can be anything from ~320px to ~1080px, so a fixed in-SVG
+   font-size would render anywhere from 5px to 20px. Everything
+   below is therefore expressed in *display pixels* and multiplied
+   by k = 700 / displayWidth, which makes text, strokes and padding
+   land at their intended physical size at any card width.
    ============================================================ */
-function bandChart(time, perModel, opts) {
-  const W = 700, H = 170, PL = 34, PR = 8, PT = 12, PB = 22;
-  const n = Math.min(time.length, perModel[0] ? perModel[0].length : 0, 72);
+const CHART_H = 200;
+
+function bandStats(perModel, cap) {
+  const n = Math.min(cap, perModel[0] ? perModel[0].length : 0);
   const lo = [], hi = [], mid = [];
   for (let i = 0; i < n; i++) {
     const vals = perModel.map(s => s[i]).filter(v => v != null);
@@ -307,55 +435,80 @@ function bandChart(time, perModel, opts) {
     vals.sort((a, b) => a - b);
     lo.push(vals[0]); hi.push(vals[vals.length - 1]); mid.push(vals[Math.floor(vals.length / 2)]);
   }
-  const all = [...lo, ...hi].filter(v => v != null);
-  if (!all.length) return null;
+  const j = Math.min(24, n - 1);
+  const has = lo.some(v => v != null);
+  return { n, lo, hi, mid, has, gap24: hi[j] - lo[j], lo24: lo[j], hi24: hi[j] };
+}
+
+function bandSvg(st, time, opts, dispW) {
+  if (!st.has) return '';
+  const W = 700, k = 700 / Math.max(dispW, 240);
+  const H = Math.round(CHART_H * k);
+  const PL = 42 * k, PR = 10 * k, PT = 12 * k, PB = 26 * k;
+  const fsY = 13 * k, fsX = 12.5 * k;
+  const n = st.n;
+  const all = [...st.lo, ...st.hi].filter(v => v != null);
   const min = Math.floor(Math.min(...all) - 1), max = Math.ceil(Math.max(...all) + 1);
-  const X = i => PL + (i / (n - 1)) * (W - PL - PR);
+  const X = i => PL + (i / Math.max(n - 1, 1)) * (W - PL - PR);
   const Y = v => PT + (1 - (v - min) / (max - min || 1)) * (H - PT - PB);
 
   let top = '', bot = '', line = '';
-  for (let i = 0; i < n; i++) if (hi[i] != null) top += `${top ? 'L' : 'M'}${X(i).toFixed(1)},${Y(hi[i]).toFixed(1)}`;
-  for (let i = n - 1; i >= 0; i--) if (lo[i] != null) bot += `L${X(i).toFixed(1)},${Y(lo[i]).toFixed(1)}`;
-  for (let i = 0; i < n; i++) if (mid[i] != null) line += `${line ? 'L' : 'M'}${X(i).toFixed(1)},${Y(mid[i]).toFixed(1)}`;
+  for (let i = 0; i < n; i++) if (st.hi[i] != null) top += `${top ? 'L' : 'M'}${X(i).toFixed(1)},${Y(st.hi[i]).toFixed(1)}`;
+  for (let i = n - 1; i >= 0; i--) if (st.lo[i] != null) bot += `L${X(i).toFixed(1)},${Y(st.lo[i]).toFixed(1)}`;
+  for (let i = 0; i < n; i++) if (st.mid[i] != null) line += `${line ? 'L' : 'M'}${X(i).toFixed(1)},${Y(st.mid[i]).toFixed(1)}`;
 
   let grid = '';
-  for (let k = 0; k <= 3; k++) {
-    const v = min + (max - min) * k / 3, y = Y(v).toFixed(1);
-    grid += `<line x1="${PL}" y1="${y}" x2="${W-PR}" y2="${y}" stroke="#2B3A4A" stroke-width="1"/>
-             <text x="4" y="${(+y+4).toFixed(1)}" fill="#8FA3B5" font-size="11" font-family="IBM Plex Mono">${Math.round(v)}${opts.unit}</text>`;
+  for (let g = 0; g <= 3; g++) {
+    const v = min + (max - min) * g / 3, y = Y(v);
+    grid += `<line x1="${PL.toFixed(1)}" y1="${y.toFixed(1)}" x2="${(W-PR).toFixed(1)}" y2="${y.toFixed(1)}" stroke="#1E2E3E" stroke-width="${(1*k).toFixed(2)}"/>
+             <text x="${(4*k).toFixed(1)}" y="${(y + fsY*.35).toFixed(1)}" fill="#95AABD" font-size="${fsY.toFixed(1)}" font-family="IBM Plex Mono, monospace">${Math.round(v)}${opts.unit}</text>`;
   }
+  const dense = dispW < 560;
   let ticks = '';
   for (let i = 0; i < n; i++) {
     const h = new Date(time[i]).getHours();
-    if (h === 0 || h === 12) {
-      const lbl = h === 0 ? new Date(time[i]).toLocaleDateString(undefined,{weekday:'short'}) : '12:00';
-      ticks += `<line x1="${X(i).toFixed(1)}" y1="${PT}" x2="${X(i).toFixed(1)}" y2="${H-PB}" stroke="#2B3A4A" stroke-dasharray="2 4"/>
-                <text x="${(X(i)+3).toFixed(1)}" y="${H-7}" fill="#8FA3B5" font-size="10.5" font-family="IBM Plex Mono">${lbl}</text>`;
+    if (h === 0 || (!dense && h === 12)) {
+      const lbl = h === 0 ? new Date(time[i]).toLocaleDateString(undefined, { weekday: 'short' }) : '12:00';
+      ticks += `<line x1="${X(i).toFixed(1)}" y1="${PT.toFixed(1)}" x2="${X(i).toFixed(1)}" y2="${(H-PB).toFixed(1)}" stroke="#26374A" stroke-width="${(1*k).toFixed(2)}" stroke-dasharray="${(2*k).toFixed(1)} ${(4*k).toFixed(1)}"/>
+                <text x="${(X(i)+4*k).toFixed(1)}" y="${(H-8*k).toFixed(1)}" fill="#95AABD" font-size="${fsX.toFixed(1)}" font-family="IBM Plex Mono, monospace">${lbl}</text>`;
     }
   }
-  const j = Math.min(24, n - 1);
-  return { svg: `<svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="${esc(opts.aria)}">
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opts.aria)}">
       ${grid}${ticks}
       <path d="${top}${bot}Z" fill="${opts.fill}"/>
-      <path d="${line}" fill="none" stroke="${opts.stroke}" stroke-width="2" stroke-linejoin="round"/>
-    </svg>`, gap24: hi[j] - lo[j], lo24: lo[j], hi24: hi[j] };
+      <path d="${line}" fill="none" stroke="${opts.stroke}" stroke-width="${(2.2*k).toFixed(2)}" stroke-linejoin="round" stroke-linecap="round"/>
+    </svg>`;
+}
+
+/* Charts are drawn only after their card is in the DOM, so each one
+   can be measured and sized to the width it actually occupies. */
+let CHARTS = [];
+function registerChart(box, drawFn) { CHARTS.push({ box, drawFn }); }
+function drawCharts() {
+  for (const c of CHARTS) {
+    const w = c.box.clientWidth;
+    if (w > 0) c.box.innerHTML = c.drawFn(w);
+  }
 }
 
 /* ============================================================ Temperature outlook ============================================================ */
 function temperatureCard(mm) {
   const s = multiSeries(mm.hourly, 'temperature_2m');
   if (s.perModel.length < 2) return null;
-  const band = bandChart(s.time, s.perModel, { unit:'°', fill:'rgba(232,163,61,.20)', stroke:'#E8A33D', aria:'Temperature range across models' });
-  if (!band) return null;
-  const gap = band.gap24;
-  const v = gap < 2  ? ['Models agree', 'Tomorrow\u2019s temperature is a safe bet.']
-          : gap < 4  ? ['Mostly settled', 'A degree or two of wiggle room.']
+  const conv = s.perModel.map(arr => arr.map(cT));
+  const st = bandStats(conv, 72);
+  if (!st.has) return null;
+  const gapC = Units.temp === 'f' ? st.gap24 / 1.8 : st.gap24;   // judge agreement in Celsius terms
+  const v = gapC < 2 ? ['Models agree', 'Tomorrow’s temperature is a safe bet.']
+          : gapC < 4 ? ['Mostly settled', 'A degree or two of wiggle room.']
           : ['Models disagree', 'Treat it as a range, not a number.'];
   const card = el('div', 'card');
   card.innerHTML = `<div class="eyebrow"><span>Temperature — next 3 days</span><span class="sources">${s.labels.join(' · ')}</span></div>
-    <div class="verdict">${v[0]}<small>${v[1]} At +24h: ${r1(band.lo24)}°–${r1(band.hi24)}°</small></div>
-    ${band.svg}
-    <div class="legend"><span><i class="swatch" style="background:rgba(232,163,61,.35)"></i>Range across the three services</span><span><i class="swatch" style="background:#E8A33D"></i>Middle estimate</span></div>`;
+    <div class="verdict">${v[0]}<small>${v[1]} At +24h: ${r1(st.lo24)}°–${r1(st.hi24)}${tSym()}</small></div>
+    <div class="chartbox"></div>
+    <div class="legend"><span><i class="swatch" style="background:rgba(240,169,76,.4)"></i>Range across the three services</span><span><i class="swatch" style="background:#F0A94C"></i>Middle estimate</span></div>`;
+  registerChart(card.querySelector('.chartbox'),
+    w => bandSvg(st, s.time, { unit:'°', fill:'rgba(240,169,76,.20)', stroke:'#F0A94C', aria:'Temperature range across models' }, w));
   return card;
 }
 
@@ -378,10 +531,9 @@ function rainCard(mm, officialPP, officialTime) {
   if (window) {
     const d = new Date(window.t);
     html += `<div class="callout"><b>${window.agree}/${window.total} services agree</b> on rain around
-      ${d.toLocaleDateString(undefined,{weekday:'long'})} ${String(d.getHours()).padStart(2,'0')}:00 —
-      likely ${r1(window.min)}–${r1(window.max)} mm.</div>`;
+      ${d.toLocaleDateString(undefined,{weekday:'long'})} ${hhmm(d)} — likely ${r1(window.min)}–${r1(window.max)} mm.</div>`;
   } else {
-    html += `<div class="callout" style="border-left-color:var(--cool)">No two services currently agree on meaningful rain in the next 48 hours.</div>`;
+    html += `<div class="callout calm">No two services currently agree on meaningful rain in the next 48 hours.</div>`;
   }
   html += '<div class="strip">';
   const startIdx = rows.findIndex(r => new Date(r.t) >= new Date());
@@ -391,7 +543,7 @@ function rainCard(mm, officialPP, officialTime) {
     let dots = '';
     for (let m = 0; m < r.total; m++) dots += `<span class="${m < r.agree ? 'on' : 'off'}">●</span>`;
     html += `<div class="hr">
-        <div class="t">${String(d.getHours()).padStart(2,'0')}:00</div>
+        <div class="t">${hhmm(d)}</div>
         <div class="dots">${dots}</div>
         <div class="sub">${r.mean >= 0.1 ? r1(r.mean)+'mm' : (op!=null && op>=15 ? op+'%' : '—')}</div>
       </div>`;
@@ -406,7 +558,8 @@ function windCard(mm, cape, capeTime) {
   const speed = multiSeries(mm.hourly, 'wind_speed_10m');
   const gust  = multiSeries(mm.hourly, 'wind_gusts_10m');
   if (speed.perModel.length < 2) return null;
-  const band = bandChart(speed.time, speed.perModel, { unit:'', fill:'rgba(95,179,199,.20)', stroke:'#5FB3C7', aria:'Sustained wind speed range across models' });
+  const conv = speed.perModel.map(arr => arr.map(cW));
+  const st = bandStats(conv, 72);
   const card = el('div', 'card');
   let html = `<div class="eyebrow"><span>Wind — next 3 days</span><span class="sources">${speed.labels.join(' · ')}</span></div>`;
 
@@ -416,79 +569,112 @@ function windCard(mm, cape, capeTime) {
     const peak = soon.reduce((a,b)=> (b.v>a.v?b:a), {v:0});
     if (peak.v >= 1500) {
       const d = new Date(peak.t);
-      html += `<div class="callout risk"><b>Storm-gust risk</b> — atmospheric energy peaks around ${String(d.getHours()).padStart(2,'0')}:00 today.
+      html += `<div class="callout risk"><b>Storm-gust risk</b> — atmospheric energy peaks around ${hhmm(d)} today.
         Sustained-wind numbers below may understate gusts if a cell forms.</div>`;
     } else if (peak.v >= 700) {
       html += `<div class="callout"><b>Some convective risk</b> today — gusts could run higher than the sustained figure during any showers.</div>`;
     }
   }
 
-  if (band) {
-    const gap = band.gap24;
-    const v = gap < 4 ? ['Models agree', 'Sustained speed is a reliable read.']
-            : gap < 8 ? ['Mostly settled', 'A few km/h of uncertainty.']
+  if (st.has) {
+    const gapK = Units.wind === 'mph' ? st.gap24 / 0.621371 : st.gap24;   // judge agreement in km/h terms
+    const v = gapK < 4 ? ['Models agree', 'Sustained speed is a reliable read.']
+            : gapK < 8 ? ['Mostly settled', 'A few km/h of uncertainty.']
             : ['Models disagree', 'Wind is the least certain variable right now.'];
-    html += `<div class="verdict">${v[0]}<small>${v[1]} At +24h: ${r1(band.lo24)}–${r1(band.hi24)} km/h sustained</small></div>${band.svg}
-      <div class="legend"><span><i class="swatch" style="background:rgba(95,179,199,.35)"></i>Sustained range</span><span><i class="swatch" style="background:#5FB3C7"></i>Middle estimate</span></div>`;
+    html += `<div class="verdict">${v[0]}<small>${v[1]} At +24h: ${r1(st.lo24)}–${r1(st.hi24)} ${wSym()} sustained</small></div>
+      <div class="chartbox"></div>
+      <div class="legend"><span><i class="swatch" style="background:rgba(95,194,216,.4)"></i>Sustained range</span><span><i class="swatch" style="background:#5FC2D8"></i>Middle estimate</span></div>`;
   }
 
   if (gust.perModel.length) {
-    const n = Math.min(gust.time.length, 24);
-    html += '<div class="strip" style="margin-top:10px">';
+    html += '<div class="strip" style="margin-top:14px">';
     const startIdx = gust.time.findIndex(t => new Date(t) >= new Date());
     for (let i = Math.max(0,startIdx); i < Math.min(gust.time.length, Math.max(0,startIdx)+24); i++) {
       const vals = gust.perModel.map(a=>a[i]).filter(v=>v!=null);
       if (!vals.length) continue;
-      const top = Math.round(Math.max(...vals));
+      const top = Math.round(cW(Math.max(...vals)));
       const d = new Date(gust.time[i]);
-      html += `<div class="hr"><div class="t">${String(d.getHours()).padStart(2,'0')}:00</div><div class="d">${top}</div><div class="sub">gust km/h</div></div>`;
+      html += `<div class="hr"><div class="t">${hhmm(d)}</div><div class="d">${top}</div><div class="sub">gust ${wSym()}</div></div>`;
     }
     html += '</div>';
   }
   card.innerHTML = html;
+  if (st.has) registerChart(card.querySelector('.chartbox'),
+    w => bandSvg(st, speed.time, { unit:'', fill:'rgba(95,194,216,.20)', stroke:'#5FC2D8', aria:'Sustained wind speed range across models' }, w));
   return card;
 }
 
-/* ============================================================ Render ============================================================ */
-function render(place, base, mm) {
-  const app = $('#app'); app.innerHTML = '';
-  const c = base.current, u = base.current_units;
+/* ============================================================ Daily outlook ============================================================ */
+function dailyCard(base) {
+  const d = base.daily;
+  const days = el('div', 'card');
+  const maxs = d.temperature_2m_max, mins = d.temperature_2m_min;
+  const lo = Math.min(...mins.filter(v => v != null));
+  const hi = Math.max(...maxs.filter(v => v != null));
+  const span = (hi - lo) || 1;
+  let ds = `<div class="eyebrow"><span>Next ${d.time.length} days</span><span class="sources">Open-Meteo blend</span></div>`;
+  d.time.forEach((t2, i) => {
+    const dt = new Date(t2);
+    const name = i === 0 ? 'Today' : dt.toLocaleDateString(undefined, { weekday: 'short' });
+    const pp = d.precipitation_probability_max[i];
+    const left = ((mins[i] - lo) / span) * 100;
+    const width = ((maxs[i] - mins[i]) / span) * 100;
+    ds += `<div class="day${i===0?' today':''}">
+        <div class="name">${name}</div>
+        <div class="ic">${icon(d.weather_code[i], 22)}</div>
+        <div class="desc">${wmo(d.weather_code[i])}${pp>=15?' <i>· '+pp+'%</i>':''}</div>
+        <div class="bar"><span class="fill" style="left:${left.toFixed(1)}%;width:${width.toFixed(1)}%"></span></div>
+        <div class="rng"><b>${Math.round(cT(maxs[i]))}°</b><i>${Math.round(cT(mins[i]))}°</i></div>
+      </div>`;
+  });
+  days.innerHTML = ds;
+  return days;
+}
 
-  const now = el('div', 'card');
-  now.innerHTML = `<div class="eyebrow"><span>Now — ${esc(place.name)}</span></div>
+/* ============================================================ Render ============================================================ */
+let LAST = null;
+
+function render(place, base, mm) {
+  LAST = { place, base, mm };
+  CHARTS = [];
+  const app = $('#app'); app.innerHTML = '';
+  const c = base.current, u = base.current_units || {};
+
+  const now = el('div', 'card span-all');
+  const sunrise = base.daily.sunrise && base.daily.sunrise[0] ? base.daily.sunrise[0].slice(11) : null;
+  const sunset  = base.daily.sunset  && base.daily.sunset[0]  ? base.daily.sunset[0].slice(11)  : null;
+  now.innerHTML = `<div class="eyebrow"><span>Now — ${esc(place.name)}</span><span class="sources">Updated ${new Date().toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'})}</span></div>
     <div class="now">
-      <div><div class="temp">${Math.round(c.temperature_2m)}°</div><div class="cond">${wmo(c.weather_code)}</div><div class="place">${esc(place.region||'')}</div></div>
+      <div class="lead">
+        <div class="temp">${Math.round(cT(c.temperature_2m))}°<span class="u">${Units.temp === 'f' ? 'F' : 'C'}</span></div>
+        <div class="cond">${icon(c.weather_code, 26)}<span>${wmo(c.weather_code)}</span></div>
+        <div class="place">${esc(place.region||'')}</div>
+        <div class="feels">Feels like ${Math.round(cT(c.apparent_temperature))}${tSym()}</div>
+      </div>
       <div class="vitals">
-        <div class="vital"><span>Feels like</span><b>${Math.round(c.apparent_temperature)}°</b></div>
         <div class="vital"><span>Humidity</span><b>${c.relative_humidity_2m}%</b></div>
-        <div class="vital"><span>Wind</span><b>${Math.round(c.wind_speed_10m)} ${u.wind_speed_10m} ${compass(c.wind_direction_10m)}</b></div>
-        <div class="vital"><span>Gusts</span><b>${Math.round(c.wind_gusts_10m)} ${u.wind_gusts_10m}</b></div>
+        <div class="vital"><span>Wind</span><b>${Math.round(cW(c.wind_speed_10m))} ${wSym()} ${compass(c.wind_direction_10m)}</b></div>
+        <div class="vital"><span>Gusts</span><b>${Math.round(cW(c.wind_gusts_10m))} ${wSym()}</b></div>
         <div class="vital"><span>Pressure</span><b>${Math.round(c.surface_pressure)} hPa</b></div>
-        <div class="vital"><span>Sunset</span><b>${base.daily.sunset[0].slice(11)}</b></div>
+        ${c.uv_index!=null?`<div class="vital"><span>UV index</span><b>${Math.round(c.uv_index)}</b></div>`:''}
+        ${sunrise?`<div class="vital"><span>Sunrise</span><b>${sunrise}</b></div>`:''}
+        ${sunset?`<div class="vital"><span>Sunset</span><b>${sunset}</b></div>`:''}
       </div>
     </div>`;
   app.append(now);
 
   const t = temperatureCard(mm); if (t) app.append(t);
-  const r = rainCard(mm, base.hourly.precipitation_probability, base.hourly.time); if (r) app.append(r);
   const w = windCard(mm, base.hourly.cape, base.hourly.time); if (w) app.append(w);
+  const r = rainCard(mm, base.hourly.precipitation_probability, base.hourly.time);
+  if (r) { r.classList.add('span-all'); app.append(r); }
 
-  const days = el('div', 'card');
-  let ds = '<div class="eyebrow"><span>Next 16 days</span></div>';
-  base.daily.time.forEach((t2, i) => {
-    const d = new Date(t2);
-    const name = i === 0 ? 'Today' : d.toLocaleDateString(undefined, { weekday: 'short' });
-    const pp = base.daily.precipitation_probability_max[i];
-    ds += `<div class="day"><div class="name">${name}</div>
-      <div class="desc">${wmo(base.daily.weather_code[i])}${pp>=15?' · '+pp+'%':''}</div>
-      <div class="rng"><b>${Math.round(base.daily.temperature_2m_max[i])}°</b> <i>${Math.round(base.daily.temperature_2m_min[i])}°</i></div></div>`;
-  });
-  days.innerHTML = ds; app.append(days);
+  app.append(dailyCard(base));
 
   const st = nearestStation(place.lat, place.lon);
   const obsSlot = el('div', 'card');
   obsSlot.innerHTML = st
-    ? `<div class="eyebrow"><span>Measured — ${st.name} airport, ${st.km} km away</span></div><div class="skeleton">Fetching the actual reading…</div>`
+    ? `<div class="eyebrow"><span>Measured — ${st.name} airport, ${st.km} km away</span></div>
+       <div class="sk" style="height:30px;width:46%"></div><div class="sk" style="height:16px;margin-top:10px"></div>`
     : `<div class="eyebrow"><span>Measured</span></div><div class="note">No reporting airport within 250 km of here. This location is model-only.</div>`;
   app.append(obsSlot);
   if (st) loadMetar(st, obsSlot, c.temperature_2m);
@@ -501,39 +687,41 @@ function render(place, base, mm) {
       <div class="note">Nothing to score yet. Every visit files the day-ahead temperature call, then checks it once
       that hour has passed. Come back tomorrow. (Rain and wind verification can be added the same way once this proves useful.)</div>`;
   } else {
-    const errs = settled.map(e => Math.abs(e.said - e.actual));
+    const errs = settled.map(e => Math.abs(dT(e.said - e.actual)));
     const avg = r1(errs.reduce((a,b)=>a+b,0)/errs.length);
     let rows = '';
     settled.slice(0,7).forEach(e => {
-      const d = e.said - e.actual;
-      rows += `<tr><td>${e.for.slice(5,10)} ${e.for.slice(11)}:00</td><td>${r1(e.said)}°</td><td>${r1(e.actual)}°</td>
-        <td style="color:${Math.abs(d)<1.5?'var(--cool)':'var(--warm)'}">${d>0?'+':''}${r1(d)}</td></tr>`;
+      const diff = dT(e.said - e.actual);
+      rows += `<tr><td>${e.for.slice(5,10)} ${e.for.slice(11)}:00</td><td>${r1(cT(e.said))}°</td><td>${r1(cT(e.actual))}°</td>
+        <td style="color:${Math.abs(diff)<dT(1.5)?'var(--cool)':'var(--warm)'}">${diff>0?'+':''}${r1(diff)}</td></tr>`;
     });
     logCard.innerHTML = `<div class="eyebrow"><span>Track record — ${esc(place.name)}</span></div>
-      <p class="note" style="margin-bottom:10px">Across ${settled.length} checked forecast${settled.length>1?'s':''}, day-ahead temperature has been off by
-      <b style="color:var(--paper)">${avg}°</b> on average.</p>
+      <p class="note" style="margin-bottom:12px">Across ${settled.length} checked forecast${settled.length>1?'s':''}, day-ahead temperature has been off by
+      <b style="color:var(--text)">${avg}${tSym()}</b> on average.</p>
       <table><thead><tr><th>Hour</th><th>Said</th><th>Was</th><th>Off by</th></tr></thead><tbody>${rows}</tbody></table>`;
   }
   app.append(logCard);
 
-  if (!Store.persistent) app.append(el('div','card','<div class="note">This preview can\'t save to your device, so saved places and the track record reset on reload. Deploy to GitHub Pages and both will persist.</div>'));
+  if (!Store.persistent) app.append(el('div','card span-all','<div class="note">This preview can\'t save to your device, so saved places, units and the track record reset on reload. Deploy to GitHub Pages and they will persist.</div>'));
+
+  drawCharts();
 }
 
-async function loadMetar(st, slot, modelTemp) {
+async function loadMetar(st, slot, modelTempC) {
   try {
     const m = await API.metar(st.icao);
     const obsT = m.temp;
     const age = Math.round((Date.now() - new Date(m.reportTime + 'Z')) / 60000);
     let delta = '';
-    if (obsT != null && modelTemp != null) {
-      const d = r1(modelTemp - obsT);
-      delta = `<div class="delta ${Math.abs(d)<2?'ok':'off'}">Model reads ${d>0?'+':''}${d}° vs the instrument</div>`;
+    if (obsT != null && modelTempC != null) {
+      const d = r1(dT(modelTempC - obsT));
+      delta = `<div class="delta ${Math.abs(d) < dT(2) ? 'ok' : 'off'}">Model reads ${d>0?'+':''}${d}° vs the instrument</div>`;
     }
     slot.innerHTML = `<div class="eyebrow"><span>Measured — ${st.name} airport, ${st.km} km away</span></div>
-      <div class="metar"><b class="mono" style="font-size:22px">${obsT!=null?r1(obsT)+'°':'—'}</b>
+      <div class="metar"><b class="obs-t mono">${obsT!=null?r1(cT(obsT))+'°'+(Units.temp==='f'?'F':'C'):'—'}</b>
       &nbsp;observed ${isFinite(age)?age+' min ago':''}<br>
-      <span class="mono" style="color:var(--mist)">${esc(m.rawOb||'')}</span></div>${delta}
-      <p class="note" style="margin-top:9px">Physical instrument reading, not a model output.</p>`;
+      <span class="mono" style="color:var(--dim)">${esc(m.rawOb||'')}</span></div>${delta}
+      <p class="note" style="margin-top:12px">Physical instrument reading, not a model output.</p>`;
   } catch (e) {
     slot.innerHTML = `<div class="eyebrow"><span>Measured — ${st.name} airport</span></div>
       <div class="note">The airport observation feed didn't respond from the browser. Everything else on this page is unaffected.</div>`;
@@ -541,38 +729,87 @@ async function loadMetar(st, slot, modelTemp) {
 }
 
 /* ============================================================ Load + wiring ============================================================ */
+function skeleton(name) {
+  const bar = (h, w, mt) => `<div class="sk" style="height:${h}px;${w?'width:'+w+';':''}${mt?'margin-top:'+mt+'px;':''}"></div>`;
+  $('#app').innerHTML =
+    `<div class="card span-all"><div class="eyebrow"><span>Loading ${esc(name)}…</span></div>
+       ${bar(64,'40%')}${bar(18,'62%',16)}${bar(18,'48%',10)}</div>` +
+    `<div class="card">${bar(15,'44%')}${bar(200,null,16)}</div>` +
+    `<div class="card">${bar(15,'40%')}${bar(200,null,16)}</div>`;
+}
+
 async function load(place) {
   Store.set('last', place);
-  $('#app').innerHTML = '<div class="card"><div class="skeleton">Loading ' + esc(place.name) + '…</div></div>';
+  skeleton(place.name);
   try {
     const [base, mm] = await Promise.all([API.baseline(place.lat, place.lon), API.multiModel(place.lat, place.lon)]);
     render(place, base, mm);
     savePlace(place);
   } catch (e) {
-    $('#app').innerHTML = '<div class="card"><p class="err">Couldn\'t reach the weather service. Check your connection and try again.</p></div>';
+    const card = el('div', 'card span-all');
+    card.innerHTML = `<p class="err">Couldn't reach the weather service.</p>
+      <p class="note" style="margin-bottom:14px">Check your connection — the forecast services are keyless and occasionally rate-limit a busy network.</p>`;
+    const retry = el('button', '', 'Try again');
+    retry.onclick = () => load(place);
+    card.append(retry);
+    $('#app').innerHTML = ''; $('#app').append(card);
   }
 }
 
-let tId;
+/* ---- units ---- */
+function setUnits(kind, val) {
+  Units[kind] = val;
+  Store.set(kind === 'temp' ? 'u_temp' : 'u_wind', val);
+  syncUnitButtons();
+  if (LAST) render(LAST.place, LAST.base, LAST.mm);
+}
+function syncUnitButtons() {
+  $('#uC').setAttribute('aria-pressed', Units.temp === 'c');
+  $('#uF').setAttribute('aria-pressed', Units.temp === 'f');
+  $('#wK').setAttribute('aria-pressed', Units.wind === 'kmh');
+  $('#wM').setAttribute('aria-pressed', Units.wind === 'mph');
+}
+$('#uC').onclick = () => setUnits('temp', 'c');
+$('#uF').onclick = () => setUnits('temp', 'f');
+$('#wK').onclick = () => setUnits('wind', 'kmh');
+$('#wM').onclick = () => setUnits('wind', 'mph');
+syncUnitButtons();
+
+/* ---- search with keyboard navigation ---- */
+let tId, hits = [], sel = -1;
+function closeResults() { $('#results').hidden = true; $('#q').setAttribute('aria-expanded','false'); sel = -1; }
+function paintSel() {
+  const btns = $('#results').querySelectorAll('button');
+  btns.forEach((b, i) => b.setAttribute('aria-selected', i === sel));
+  if (sel >= 0 && btns[sel]) btns[sel].scrollIntoView({ block: 'nearest' });
+}
 $('#q').addEventListener('input', e => {
   clearTimeout(tId);
   const v = e.target.value.trim();
-  if (v.length < 2) { $('#results').hidden = true; return; }
+  if (v.length < 2) { closeResults(); return; }
   tId = setTimeout(async () => {
     try {
-      const list = await API.geocode(v);
-      const box = $('#results'); box.innerHTML = '';
-      if (!list.length) box.innerHTML = '<button disabled>No place by that name. Try another spelling.</button>';
-      list.forEach(p => {
+      hits = await API.geocode(v);
+      const box = $('#results'); box.innerHTML = ''; sel = -1;
+      if (!hits.length) box.innerHTML = '<button disabled>No place by that name. Try another spelling.</button>';
+      hits.forEach(p => {
         const b = el('button', '', `${esc(p.name)}<small>${esc(p.region)}</small>`);
-        b.onclick = () => { $('#q').value=''; box.hidden=true; load(p); };
+        b.setAttribute('role', 'option');
+        b.onclick = () => { $('#q').value=''; closeResults(); load(p); };
         box.append(b);
       });
-      box.hidden = false;
-    } catch (err) { $('#results').hidden = true; }
+      box.hidden = false; $('#q').setAttribute('aria-expanded','true');
+    } catch (err) { closeResults(); }
   }, 320);
 });
-document.addEventListener('click', e => { if (!e.target.closest('.finder')) $('#results').hidden = true; });
+$('#q').addEventListener('keydown', e => {
+  if ($('#results').hidden || !hits.length) return;
+  if (e.key === 'ArrowDown') { e.preventDefault(); sel = (sel + 1) % hits.length; paintSel(); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); sel = (sel - 1 + hits.length) % hits.length; paintSel(); }
+  else if (e.key === 'Enter' && sel >= 0) { e.preventDefault(); const p = hits[sel]; $('#q').value=''; closeResults(); load(p); }
+  else if (e.key === 'Escape') closeResults();
+});
+document.addEventListener('click', e => { if (!e.target.closest('.finder')) closeResults(); });
 
 $('#locBtn').onclick = () => {
   if (!navigator.geolocation) return;
@@ -582,6 +819,10 @@ $('#locBtn').onclick = () => {
     () => { $('#locBtn').textContent = 'Locate'; }
   );
 };
+
+/* redraw charts at their new width when the layout reflows */
+let rId;
+window.addEventListener('resize', () => { clearTimeout(rId); rId = setTimeout(drawCharts, 160); });
 
 function tick(){ $('#clock').textContent = new Date().toLocaleString(undefined,{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}); }
 tick(); setInterval(tick, 30000);
