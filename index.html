@@ -194,10 +194,10 @@ const API = {
     return (j.results || []).map(x => ({ name: x.name, lat: x.latitude, lon: x.longitude, region: [x.admin1, x.country].filter(Boolean).join(', ') }));
   },
 
-  /* "Now" + week ahead + official precipitation probability + CAPE, from Open-Meteo's own blended best_match */
+  /* "Now" + 16-day outlook + official precipitation probability + CAPE, from Open-Meteo's own blended best_match */
   async baseline(lat, lon) {
     const p = new URLSearchParams({
-      latitude: lat, longitude: lon, timezone: 'auto', forecast_days: 7,
+      latitude: lat, longitude: lon, timezone: 'auto', forecast_days: 16,
       current: 'temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,surface_pressure,is_day',
       hourly: 'precipitation_probability,cape',
       daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset'
@@ -474,7 +474,7 @@ function render(place, base, mm) {
   const w = windCard(mm, base.hourly.cape, base.hourly.time); if (w) app.append(w);
 
   const days = el('div', 'card');
-  let ds = '<div class="eyebrow"><span>Week ahead</span></div>';
+  let ds = '<div class="eyebrow"><span>Next 16 days</span></div>';
   base.daily.time.forEach((t2, i) => {
     const d = new Date(t2);
     const name = i === 0 ? 'Today' : d.toLocaleDateString(undefined, { weekday: 'short' });
