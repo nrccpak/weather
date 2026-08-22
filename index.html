@@ -399,8 +399,9 @@ function renderSaved() {
    a small history buffer; extend later if this proves useful).
    Values are always stored in Celsius.
    ============================================================ */
+const logKey = place => 'log:' + place.name + '@' + place.lat.toFixed(2) + ',' + place.lon.toFixed(2);
 function logForecast(place, time, temps) {
-  const key = 'log:' + place.name;
+  const key = logKey(place);
   const log = Store.get(key, []);
   const stamp = new Date(Date.now() + 24 * 3600e3).toISOString().slice(0, 13);
   const idx = time.findIndex(t => t.slice(0, 13) === stamp);
@@ -409,7 +410,7 @@ function logForecast(place, time, temps) {
   Store.set(key, log.slice(0, 40));
 }
 function settleLog(place, time, temps) {
-  const key = 'log:' + place.name;
+  const key = logKey(place);
   const log = Store.get(key, []);
   let changed = false;
   for (const e of log) {
